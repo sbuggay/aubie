@@ -23,6 +23,7 @@
 
 #define MAXDATASIZE 100
 
+#pragma pack(1)
 struct packet{
     uint16_t tml;
     uint16_t requestid;

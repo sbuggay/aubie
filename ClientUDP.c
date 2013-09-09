@@ -14,14 +14,13 @@
 #include <netdb.h>
 
 #define SERVERPORT "10014"    // the port users will be connecting to
-
 #define MAXBUFLEN 100
 
 struct __attribute__((packed)) packet{
     uint16_t tml;
     uint16_t requestid;
     uint8_t operation;
-    char *message;
+    char message[0];
 };
 
 void *get_in_addr(struct sockaddr *sa)
@@ -73,18 +72,37 @@ int main(int argc, char *argv[])
         return 2;
     }
 
-    
+    printf("%s\n", argv[2]);
+    // Setup test packet
+    struct packet *test = malloc(sizeof(struct packet));
+    test->tml = 5 + strlen(argv[2]) + 1;
+    test->requestid = 1;
+    test->operation = 0x55;
+    test->message = strdup(argv[2]); //Copy argv[2] into struct
 
-    struct packet test;
-    test.tml = 5 + strlen(argv[2]);
-    test.requestid = 1;
-    test.operation = 0x55;
-    // test->message = argv[2];
-    test.message = malloc(sizeof(argv[2]));
-    memcpy(test.message, argv[2], sizeof(argv[2]));
-    printf("(%d|%d|%d|%s)\n", test.tml, test.requestid, test.operation, test.message);
+    printf("(%d|%d|%d|%s)\n", test->tml, test->requestid, test->operation, test->message); //Print test packet
+    printf("Total packet size: %d\nLength of string: %d\n", sizeof(*test), strlen(test->message)); //Print size and length
 
-    if ((numbytes = sendto(sockfd, (char *)&test, sizeof(test), 0, p->ai_addr, p->ai_addrlen)) == -1) {
+    //printf("Message :%s %d\n", msgbuf, strlen(msgbuf));
+    //Send each segment one by one
+    // if ((numbytes = sendto(sockfd, &test.tml, sizeof(test.tml), 0, p->ai_addr, p->ai_addrlen)) == -1) {
+    //     perror("talker: sendto");
+    //     exit(1);
+    // }
+    // if ((numbytes = sendto(sockfd, &test.requestid, sizeof(test.requestid), 0, p->ai_addr, p->ai_addrlen)) == -1) {
+    //     perror("talker: sendto");
+    //     exit(1);
+    // }
+    // if ((numbytes = sendto(sockfd, &test.operation, sizeof(test.operation), 0, p->ai_addr, p->ai_addrlen)) == -1) {
+    //     perror("talker: sendto");
+    //     exit(1);
+    // }
+    // if ((numbytes = sendto(sockfd, test.message, strlen(test.message) + 1, 0, p->ai_addr, p->ai_addrlen)) == -1) {
+    //     perror("talker: sendto");
+    //     exit(1);
+    // }
+
+    if ((numbytes = sendto(sockfd, test, sizeof(*test) + strlen(test->message), 0, p->ai_addr, p->ai_addrlen)) == -1) {
         perror("talker: sendto");
         exit(1);
     }
@@ -92,6 +110,7 @@ int main(int argc, char *argv[])
     freeaddrinfo(servinfo);
 
     printf("talker: sent %d bytes to %s\n", numbytes, argv[1]);
+
     if ((numbytes = recvfrom(sockfd, buf, MAXBUFLEN-1 , 0, (struct sockaddr *)&their_addr, &addr_len)) == -1) {
         perror("recvfrom");
         exit(1);

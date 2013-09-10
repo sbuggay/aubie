@@ -3,6 +3,21 @@ import sys
 import struct
 import time
 
+def unpack_with_final_asciiz(fmt, dat):
+    if fmt[-1] not in ('z', 's') or (fmt[-1] == 's' and fmt[-2].isdigit()):
+        return struct.unpack(fmt, dat)
+
+    non_str_len = struct.calcsize(fmt[:-1])
+    str_len = len(dat) - non_str_len
+
+    if fmt[-1] == 'z':
+        str_fmt = "{0}sx".format(str_len - 1)
+    else:
+        str_fmt = "{0}s".format(str_len)
+    new_fmt = fmt[:-1] + str_fmt
+
+    return struct.unpack(new_fmt, dat)
+
 hostname = sys.argv[1]
 port = int(sys.argv[2])
 operation = int(sys.argv[3])
@@ -45,7 +60,7 @@ if operation == 85:
 else: 
 	print "Operation 107: Disemvowel"
 	print "Recieved data: ", data
-	data = struct.unpack("h h 5s", data)
+	data = unpack_with_final_asciiz("hhs", data)
 	print "tml:", data[0]
 	print "requestid:", data[1]
 	print "string:", data[2]

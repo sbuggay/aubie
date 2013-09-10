@@ -126,7 +126,7 @@ int main(void)
         memcpy(&operation,messagep,sizeof(uint8_t));  
         messagep += sizeof(uint8_t); 
         int stringLength = tml - 5;
-        char *buffer = malloc(stringLength);
+        char *buffer = malloc(stringLength + 1);
         strcpy(buffer, messagep);
         buffer[stringLength] = '\0';
 

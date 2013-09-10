@@ -1,6 +1,7 @@
-/*
-** listener.c -- a datagram sockets "server" demo
-*/
+// Group 4
+// ServerUDP.c
+// compile with gcc ServerUDP.c -o ServerUDP
+// run with ./ServerUDP [port]
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,13 +16,6 @@
 
 #define MAXBUFLEN 100
 
-struct __attribute__((packed)) request_packet{ //packed structure
-    uint16_t tml;
-    uint16_t requestid;
-    uint8_t operation;
-    char *message;
-};
-
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
 {
@@ -32,7 +26,7 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-int is_vowel(char c) {
+int is_vowel(char c) { //check for vowels
     switch(c)
     {
         case 'a':
@@ -51,7 +45,7 @@ int is_vowel(char c) {
     }
 }
 
-void removeChar(char *str, char c) {
+void removeChar(char *str, char c) { //removeChar function to remove characters from a string
     char *src, *dst;
     for (src = dst = str; *src != '\0'; src++) {
         *dst = *src;
@@ -62,12 +56,12 @@ void removeChar(char *str, char c) {
 
 int main(int argc, char *argv[])
 {
-    if(argc < 2) {
+    if(argc != 2) { //check for correct usage
         printf("Usage:./server port\n");
         exit(0);
     }
 
-    char* port = argv[1];
+    char* port = argv[1]; //set the port
 
     int sockfd, rv, numbytes;
     struct addrinfo hints, *servinfo, *p;
@@ -104,16 +98,19 @@ int main(int argc, char *argv[])
         return 2;
     }
 
+    int client_length = (int)sizeof(struct sockaddr_in);
+
     while (1)
     {
         printf("Server: waiting to recvfrom...\n");
-
         char *s = NULL;
-        int client_length = (int)sizeof(struct sockaddr_in);
+        
 
-        struct request_packet *message = malloc(MAXBUFLEN - sizeof(struct request_packet) - 1);
+        //struct request_packet *message = malloc(MAXBUFLEN - sizeof(struct request_packet) - 1);
+        uint8_t *message = malloc(MAXBUFLEN - 1); //allocate space for the message
 
-        if ((numbytes = recvfrom(sockfd, message, MAXBUFLEN, 0, (struct sockaddr *)&their_addr, &client_length)) == -1) {
+        //recieve a request
+        if ((numbytes = recvfrom(sockfd, message, MAXBUFLEN - 1, 0, (struct sockaddr *)&their_addr, &client_length)) == -1) {
             perror("recvfrom");
             exit(1);
         }
@@ -121,19 +118,20 @@ int main(int argc, char *argv[])
         printf("Server: recieved\n");
         printf("Server: packet is %d bytes long\n", numbytes);
 
-        uint8_t *messagep = message;
-        uint16_t tml, requestid;
+        //unpack packet
+        uint8_t *messagep = message; //new char pointer at message address
+        uint16_t tml, requestid; //set up vars
         uint8_t operation;
-        memcpy(&tml,messagep,sizeof(uint16_t)); 
-        messagep += sizeof(uint16_t); 
-        memcpy(&requestid,messagep,sizeof(uint16_t)); 
-        messagep += sizeof(uint16_t); 
-        memcpy(&operation,messagep,sizeof(uint8_t));  
-        messagep += sizeof(uint8_t); 
-        int stringLength = tml - 5;
-        char *buffer = malloc(stringLength + 1);
-        strcpy(buffer, messagep);
-        buffer[stringLength] = '\0';
+        memcpy(&tml,messagep,sizeof(uint16_t)); //copy first 2 bytes into tml 
+        messagep += sizeof(uint16_t); //shift over 2 bytes
+        memcpy(&requestid,messagep,sizeof(uint16_t)); //copy 2nd 2 bytes into requestid
+        messagep += sizeof(uint16_t); //shift over 2 bytes
+        memcpy(&operation,messagep,sizeof(uint8_t)); //copy next byte into operation
+        messagep += sizeof(uint8_t); //shift over 1 byte
+        int stringLength = tml - 5; //calculate length of string (tml - 5(2 + 2 + 1 for header))
+        char *buffer = malloc(stringLength + 1); //allocate space including space for '\0'
+        strcpy(buffer, messagep); // copy the rest of the messagep into buffer string
+        buffer[stringLength] = '\0'; //set '\0'
 
         // Print some info on the packet
         printf("(%d|%d|%d|%s)\n", tml, requestid, operation, buffer);
@@ -156,18 +154,18 @@ int main(int argc, char *argv[])
                 }
             } 
             uint16_t out[3];
-            out[0] = 6;
-            out[1] = requestid;
-            out[2] = total;
+            out[0] = 6; //TML will always be 6 because message will always contain 3 shorts
+            out[1] = requestid; //send back requestid
+            out[2] = total; //set total
             printf("Total vowels: %d\n", total);
             printf("Server: Sending response to client\n");
-            sendto(sockfd, out, 6, 0, (struct sockaddr *)&their_addr, client_length);
+            sendto(sockfd, out, 6, 0, (struct sockaddr *)&their_addr, client_length); //sends the out array
         }
         // Disemvowel
         else if(operation == 170) {
             printf("Operation 107: Disemvowel\n");
             printf("String in: %s\n", buffer);
-            removeChar(buffer, 'a');
+            removeChar(buffer, 'a'); //remove all vowels
             removeChar(buffer, 'e');
             removeChar(buffer, 'i');
             removeChar(buffer, 'o');
@@ -179,24 +177,28 @@ int main(int argc, char *argv[])
             removeChar(buffer, 'U');
             printf("String out: %s\n", buffer);
 
-            char *buf = malloc( 4 + strlen(buffer) ); 
-            char *pos = buf;
-            *(u_short*)pos = 4 + strlen(buffer);
-            pos += sizeof(u_short);
-            *(u_short*)pos = requestid;
-            pos += sizeof(u_short);
-            strcpy( pos, buffer );
+            //set up returning packet
+            char *buf = malloc(4 + strlen(buffer)); //allocate space (4 + length of returning string)
+            char *pos = buf; //set up pointer
+            *(u_short*)pos = 4 + strlen(buffer); //fill in tml
+            pos += sizeof(u_short); //shift
+            *(u_short*)pos = requestid; //fill in requestid
+            pos += sizeof(u_short); //shift
+            strcpy( pos, buffer ); //fill in string
+            //packet now looks like (h,h,s)
 
             printf("Server: Sending response to client\n");
-            int bytes = sendto(sockfd, buf, 4 + strlen(buffer), 0, (struct sockaddr *)&their_addr, client_length);
+            int bytes = sendto(sockfd, buf, 4 + strlen(buffer), 0, (struct sockaddr *)&their_addr, client_length); //send the packet to the client
             printf("Sent %d bytes\n", bytes);
         }
         // No op
         else {
             printf("Server: Unknown operation\n");
         }
+        //free everything
         free(message);
         free(buffer);
+        //null all the pointers
         message = NULL;
         messagep = NULL;
         buffer = NULL;

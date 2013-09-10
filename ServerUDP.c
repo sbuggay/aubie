@@ -126,8 +126,9 @@ int main(void)
         memcpy(&operation,messagep,sizeof(uint8_t));  
         messagep += sizeof(uint8_t); 
         int stringLength = tml - 5;
-        char *buffer = malloc(stringLength + 1);
-        memcpy(buffer, messagep, stringLength);
+        char *buffer = malloc(stringLength);
+        strcpy(buffer, messagep);
+        buffer[stringLength] = '\0';
 
         // Print some info on the packet
         printf("(%d|%d|%d|%s)\n", tml, requestid, operation, buffer);
@@ -148,9 +149,14 @@ int main(void)
                 if(is_vowel(c)) {
                     total++;
                 }
-            }
+            } 
+            uint16_t out[3];
+            out[0] = 6;
+            out[1] = requestid;
+            out[2] = total;
             printf("Total vowels: %d\n", total);
-            sendto(sockfd, &total, sizeof(total), 0, (struct sockaddr *)&their_addr, client_length);
+            printf("Server: Sending response to client\n");
+            sendto(sockfd, out, 6, 0, (struct sockaddr *)&their_addr, client_length);
         }
         // Disemvowel
         else if(operation == 107) {
@@ -167,16 +173,23 @@ int main(void)
             removeChar(buffer, 'O');
             removeChar(buffer, 'U');
             printf("String out: %s\n", buffer);
-            sendto(sockfd, buffer, strlen(buffer), 0, (struct sockaddr *)&their_addr, client_length);
+
+            char *packet_out = malloc(snprintf(NULL, 0, "%hu%hu%s", 4+strlen(buffer), requestid, buffer) + 1);
+            sprintf(packet_out, "%hu%hu%s", 4+strlen(buffer), requestid, buffer);
+            printf("%s\n", packet_out);
+            printf("Server: Sending response to client\n");
+            sendto(sockfd, packet_out, sizeof(*packet_out), 0, (struct sockaddr *)&their_addr, client_length);
         }
         // No op
         else {
             printf("Server: Unknown operation\n");
         }
-
+        // free(out);
         free(message);
         free(buffer);
+        // out = NULL;
         message = NULL;
+        messagep = NULL;
         buffer = NULL;
     }
     // Cleanup

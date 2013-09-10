@@ -47,7 +47,7 @@ void *get_in_addr(struct sockaddr *sa)
 int main(int argc, char *argv[])
 {
     int sockfd, numbytes;  
-    char buf[MAXDATASIZE];
+    //char buf[MAXDATASIZE];
     struct addrinfo hints, *servinfo, *p;
     int rv;
     char s[INET6_ADDRSTRLEN];
@@ -90,24 +90,35 @@ int main(int argc, char *argv[])
 
 	//Construct packet
 	printf("Sending message: %s\n", argv[4]);
-    struct packet *test = malloc(sizeof(struct packet));
+    /*
+	struct packet *test = malloc(sizeof(struct packet));
     test->requestid = 1;  //needs to be reset by the server
 	int oper = atoi(argv[3]);
 	test->operation = oper; //needs to be changed to cmd line arg input
-	//printf("Operation: %d\n", test->operation);
     test->tml = 5 + strlen(argv[4]);  //5 + message length
-	//printf("Total message length: %d\n", test->tml);
 	test->message = strdup(argv[4]); //Copy argv[2] into struct
-	//printf("Message: %s\n", test->message);
 	
 	printf("(%d|%d|%d|%s)\n", test->tml, test->requestid, test->operation, test->message); //Print test packet
     printf("Total packet size: %d\nLength of string: %d\n", sizeof(*test), strlen(test->message)); //Print size and length
-
+	*/
+	uint16_t requestid = 1;
+	
+	char *buf = malloc( 5 + strlen(argv[4]) ); 
+    char *pos = buf;
+    *(u_short*)pos = 5 + strlen(argv[4]);
+    pos += sizeof(u_short);
+    *(u_short*)pos = requestid;
+    pos += sizeof(u_short);
+	*(u_int8_t*)pos = atoi(argv[3]);
+	pos += sizeof(u_int8_t);
+    strcpy( pos, argv[4] );
+	
     inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
             s, sizeof s);
     printf("client: connecting to %s\n", s);
+	
     //printf("sending %d, %d", test->requestid, test->tml);
-    write(sockfd, argv[2], sizeof(argv[2]));
+    write(sockfd, buf, sizeof(buf));
     freeaddrinfo(servinfo); // all done with this structure
 
     if ((numbytes = read(sockfd, buf, MAXDATASIZE-1)) == -1) {

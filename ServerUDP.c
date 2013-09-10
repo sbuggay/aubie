@@ -63,6 +63,7 @@ int main(int argc, char *argv[])
 
     char* port = argv[1]; //set the port
 
+    //init a bunch of variables
     int sockfd, rv, numbytes;
     struct addrinfo hints, *servinfo, *p;
     struct sockaddr_storage their_addr;
@@ -98,14 +99,14 @@ int main(int argc, char *argv[])
         return 2;
     }
 
-    int client_length = (int)sizeof(struct sockaddr_in);
+    int client_length = (int)sizeof(struct sockaddr_in); //set client length
 
+    //infinite loop
     while (1)
     {
         printf("Server: waiting to recvfrom...\n");
         char *s = NULL;
         
-
         //struct request_packet *message = malloc(MAXBUFLEN - sizeof(struct request_packet) - 1);
         uint8_t *message = malloc(MAXBUFLEN - 1); //allocate space for the message
 
@@ -140,7 +141,6 @@ int main(int argc, char *argv[])
         printf("operation: %d\n", operation);
         printf("string: %s\n", buffer);
         
-        // Compute operation
         // Number of Vowels
         if(operation == 85) {
             printf("Operation 85: Number of vowels\n");

@@ -3,7 +3,6 @@
 // compile with gcc ClientTCP.c -o ClientTCP
 // run with ./ClientTCP [hostname] [port] [operation] [string]
 
-// includes
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -30,6 +29,7 @@ void *get_in_addr(struct sockaddr *sa) {
 
 int main(int argc, char *argv[])
 {
+    //set up some variables
     int sockfd, numbytes;
     struct addrinfo hints, *servinfo, *p;
     int rv;
@@ -62,7 +62,6 @@ int main(int argc, char *argv[])
             perror("client: connect");
             continue;
         }
-
         break;
     }
 
@@ -76,7 +75,7 @@ int main(int argc, char *argv[])
     // setup variables
 	uint16_t tml;
 	uint16_t requestid = 1; // requestid can be whatever
-	uint8_t operation = atoi(argv[3]);
+	uint8_t operation = atoi(argv[3]); // set operation
 
     inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr), s, sizeof s);
     printf("client: connecting to %s\n", s);
@@ -84,21 +83,16 @@ int main(int argc, char *argv[])
     //create packet
     uint8_t *buf = malloc(5 + strlen(argv[4])); // allocate space for packet
     uint8_t *pos = buf; //point pointer
-    *(uint16_t*)pos = 5 + strlen(argv[4]);
-    pos += sizeof(uint16_t);
-    *(uint16_t*)pos = requestid;
-    pos += sizeof(uint16_t);
-    *(u_int8_t*)pos = operation;
-    pos += sizeof(u_int8_t);
-    strcpy( pos, argv[4] );
-
-    time_t start,end;
-    time (&start);
+    *(uint16_t*)pos = 5 + strlen(argv[4]); //set first 2 bytes to total message length (5 + strlen(message))
+    pos += sizeof(uint16_t); // move pointer 2 bytes over
+    *(uint16_t*)pos = requestid; // set next 2 bytes to rid
+    pos += sizeof(uint16_t); // move over 2 bytes
+    *(uint8_t*)pos = operation; // set next bte to operation
+    pos += sizeof(u_int8_t); // move over 1 byte
+    strcpy( pos, argv[4] ); // copy string into rest of packet
 
     // send packet
     write(sockfd, buf, 5 + strlen(argv[4]));
-
-    freeaddrinfo(servinfo); // all done with this structure
 	
 	uint8_t *in = malloc(MAXDATASIZE);
     if ((numbytes = read(sockfd, in, MAXDATASIZE-1)) == -1) {
@@ -108,35 +102,37 @@ int main(int argc, char *argv[])
 
     // disemvowel operation
 	if (operation == 170) {
-		uint8_t *inp = in;
-		uint16_t tml, rid;
+		uint8_t *inp = in; //pointer to packet
+		uint16_t tml, rid; // set up variables
         //unpack (h,h,s) packet
-		memcpy(&tml, inp, sizeof(uint16_t)); //copy first 
-		inp += sizeof(uint16_t);
-		memcpy(&rid, inp, sizeof(uint16_t));
-		inp += sizeof(uint16_t);
-		char *inbuf = malloc(tml - 4);
-		strcpy(inbuf, inp);
+		memcpy(&tml, inp, sizeof(uint16_t)); //copy first two bytes into tml
+		inp += sizeof(uint16_t); //move pointer 2 bytes over
+		memcpy(&rid, inp, sizeof(uint16_t)); //copy next two bytes into rid
+		inp += sizeof(uint16_t); //move pointer 2 bytes over 
+		char *inbuf = malloc(tml - 4);  //allocate space for string
+		strcpy(inbuf, inp); //copy rest of packet into string
 		inbuf[tml - 4] = '\0'; // set null terminator
+        //print out some info
 		printf("client: received tml is '%hu'\n",tml);
 		printf("client: received rid is '%hu'\n",rid);
 		printf("client: received disemvoweled message '%s'\n",inbuf);
 	} 
     // vowel count operation
 	else { 
-		uint8_t *inp = in;
-		uint16_t tml, rid, vowels;
+		uint8_t *inp = in; // pointer to packet
+		uint16_t tml, rid, vowels; //set up variables
         // unpack (h,h,h) uint16_t
-		memcpy(&tml, inp, sizeof(u_short));
-		inp += sizeof(uint16_t);
-		memcpy(&rid, inp, sizeof(uint16_t));
-		inp += sizeof(uint16_t);
-		memcpy(&vowels, inp, sizeof(uint16_t));
+		memcpy(&tml, inp, sizeof(u_short)); // copy first 2 bytes into tml
+		inp += sizeof(uint16_t); // move pointer 2 bytes over
+		memcpy(&rid, inp, sizeof(uint16_t)); // copy next 2 bytes into rid
+		inp += sizeof(uint16_t); // move pointer 2 bytes over
+		memcpy(&vowels, inp, sizeof(uint16_t)); // copy last two bytes into vowels
 		printf("client: received tml is '%hu'\n",tml);
 		printf("client: received rid is '%hu'\n",rid);
 		printf("client: received vowel length '%hu'\n",vowels);
 	}
 	
+    freeaddrinfo(servinfo); // all done with this structure
     close(sockfd);
     return 0;
 }

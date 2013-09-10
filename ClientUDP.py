@@ -1,15 +1,17 @@
 # group 4
-# CliendUDP.py
-# run with python CliendUDP.py [hostname] [port] [operation] [string]
+# ClientUDP.py
+# run with python ClientUDP.py [hostname] [port] [operation] [string]
 
 import sys, socket, struct, time
 
-def modified_unpack(fmt, dat): #custom unpacking method dealing with ending strings
-    non_str_len = struct.calcsize(fmt[:-1]) #get len of everything but the string
-    str_len = len(dat) - non_str_len #get len of string
-    str_fmt = "{0}s".format(str_len) #get new format
-    new_fmt = fmt[:-1] + str_fmt #add it to the old format
-    return struct.unpack(new_fmt, dat) #unpack it with new format
+BUFFER_SIZE = 100 # set buffer size
+
+def modified_unpack(fmt, dat): # custom unpacking method dealing with ending strings
+    non_str_len = struct.calcsize(fmt[:-1]) # get len of everything but the string
+    str_len = len(dat) - non_str_len # get len of string
+    str_fmt = "{0}s".format(str_len) # get new format
+    new_fmt = fmt[:-1] + str_fmt # add it to the old format
+    return struct.unpack(new_fmt, dat) # unpack it with new format
 
 hostname = sys.argv[1] #set hostname
 port = int(sys.argv[2]) #set port
@@ -35,7 +37,7 @@ print "Client: sending data"
 sock.sendto(msgbuf, (hostname, port)) #send the data
 
 #wait
-data, addr = sock.recvfrom(1024) #recieve data from server
+data, addr = sock.recvfrom(BUFFER_SIZE) #recieve data from server
 print "Client: response from ", addr
 
 elapsed = (time.clock() - start) #get elapsed time

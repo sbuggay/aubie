@@ -1,6 +1,5 @@
 /*
 ** client.c -- a stream socket client demo
-aaaa
 */
 
 #include <stdio.h>
@@ -17,16 +16,23 @@ aaaa
 
 #include <arpa/inet.h>
 
-#define PORT "3490" // the port client will be connecting to 
+#define PORT "10014" // the port client will be connecting to 
 
 #define MAXDATASIZE 100 // max number of bytes we can get at once 
 
-struct packet{
+/*struct packet{
     uint16_t tml;
     uint16_t requestid;
     uint8_t operation;
     //char *string;
-} __attribute__((packed));
+} __attribute__((packed));*/
+
+struct __attribute__((packed)) packet{
+    uint16_t tml;
+    uint16_t requestid;
+    uint8_t operation;
+    char *message;
+};
 
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
@@ -46,8 +52,8 @@ int main(int argc, char *argv[])
     int rv;
     char s[INET6_ADDRSTRLEN];
 
-    if (argc > 3) {
-        fprintf(stderr,"usage: client hostname\n");
+    if (argc != 5) {
+        fprintf(stderr,"usage: client servername port operation message\n");
         exit(1);
     }
 
@@ -55,7 +61,7 @@ int main(int argc, char *argv[])
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
 
-    if ((rv = getaddrinfo(argv[1], PORT, &hints, &servinfo)) != 0) {
+    if ((rv = getaddrinfo(argv[1], argv[2], &hints, &servinfo)) != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
         return 1;
     }
@@ -82,10 +88,20 @@ int main(int argc, char *argv[])
         return 2;
     }
 
-
-    // struct packet *test;
-    // test->requestid = 4;
-    // test->tml = 6;
+	//Construct packet
+	printf("Sending message: %s\n", argv[4]);
+    struct packet *test = malloc(sizeof(struct packet));
+    test->requestid = 1;  //needs to be reset by the server
+	int oper = atoi(argv[3]);
+	test->operation = oper; //needs to be changed to cmd line arg input
+	//printf("Operation: %d\n", test->operation);
+    test->tml = 5 + strlen(argv[4]);  //5 + message length
+	//printf("Total message length: %d\n", test->tml);
+	test->message = strdup(argv[4]); //Copy argv[2] into struct
+	//printf("Message: %s\n", test->message);
+	
+	printf("(%d|%d|%d|%s)\n", test->tml, test->requestid, test->operation, test->message); //Print test packet
+    printf("Total packet size: %d\nLength of string: %d\n", sizeof(*test), strlen(test->message)); //Print size and length
 
     inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
             s, sizeof s);

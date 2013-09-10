@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
             sendto(sockfd, out, 6, 0, (struct sockaddr *)&their_addr, client_length);
         }
         // Disemvowel
-        else if(operation == 107) {
+        else if(operation == 170) {
             printf("Operation 107: Disemvowel\n");
             printf("String in: %s\n", buffer);
             removeChar(buffer, 'a');
@@ -179,10 +179,6 @@ int main(int argc, char *argv[])
             removeChar(buffer, 'U');
             printf("String out: %s\n", buffer);
 
-            // char *packet_out = malloc(snprintf(NULL, 0, "%hu%hu%s", 4+strlen(buffer), requestid, buffer) + 1);
-            // sprintf(packet_out, "%hu%hu%s", 4+strlen(buffer), requestid, buffer);
-            // printf("%s %d\n", packet_out, 4 + strlen(buffer));
-            // allocate the buffer
             char *buf = malloc( 4 + strlen(buffer) ); 
             char *pos = buf;
             *(u_short*)pos = 4 + strlen(buffer);
@@ -199,10 +195,8 @@ int main(int argc, char *argv[])
         else {
             printf("Server: Unknown operation\n");
         }
-        // free(out);
         free(message);
         free(buffer);
-        // out = NULL;
         message = NULL;
         messagep = NULL;
         buffer = NULL;

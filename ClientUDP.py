@@ -3,19 +3,16 @@ import sys
 import struct
 import time
 
-def unpack_with_final_asciiz(fmt, dat):
+def modified_unpack(fmt, dat):
     if fmt[-1] not in ('z', 's') or (fmt[-1] == 's' and fmt[-2].isdigit()):
         return struct.unpack(fmt, dat)
-
     non_str_len = struct.calcsize(fmt[:-1])
     str_len = len(dat) - non_str_len
-
     if fmt[-1] == 'z':
         str_fmt = "{0}sx".format(str_len - 1)
     else:
         str_fmt = "{0}s".format(str_len)
     new_fmt = fmt[:-1] + str_fmt
-
     return struct.unpack(new_fmt, dat)
 
 hostname = sys.argv[1]
@@ -36,12 +33,10 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 start = time.clock()
 msglength = 5 + len(message);
-msgbuf = struct.pack("h h b", msglength, 1, operation) + message #pack the message
-print "packed hex:", ":".join("{0:x}".format(ord(c)) for c in msgbuf)
-# print ":".join("{0:x}".format(ord(c)) for c in msgbuf)
+msgbuf = struct.pack("h h B", msglength, 1, operation) + message
 
 print "Client: sending data"
-sock.sendto(msgbuf, (hostname, port));
+sock.sendto(msgbuf, (hostname, port))
 
 data, addr = sock.recvfrom(1024)
 print "Client: response from ", addr
@@ -51,16 +46,13 @@ print "Time elapsed: ", elapsed
 
 if operation == 85:
 	print "Operation 85: Number of vowels"
-	print "Recieved data:", data
-	data = struct.unpack("h h h", data);
-	print "Recieved data:", data
+	data = struct.unpack("h h h", data)
 	print "tml:", data[0]
 	print "requestid:", data[1]
 	print "vowels:", data[2]
 else: 
-	print "Operation 107: Disemvowel"
-	print "Recieved data: ", data
-	data = unpack_with_final_asciiz("hhs", data)
+	print "Operation 170: Disemvowel"
+	data = modified_unpack("hhs", data)
 	print "tml:", data[0]
 	print "requestid:", data[1]
 	print "string:", data[2]

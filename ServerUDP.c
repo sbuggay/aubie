@@ -13,8 +13,6 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#define MYPORT "10014"    // the port users will be connecting to
-
 #define MAXBUFLEN 100
 
 struct __attribute__((packed)) request_packet{ //packed structure
@@ -62,8 +60,15 @@ void removeChar(char *str, char c) {
     *dst = '\0';
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
+    if(argc < 2) {
+        printf("Usage:./server port\n");
+        exit(0);
+    }
+
+    char* port = argv[1];
+
     int sockfd, rv, numbytes;
     struct addrinfo hints, *servinfo, *p;
     struct sockaddr_storage their_addr;
@@ -75,7 +80,7 @@ int main(void)
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_flags = AI_PASSIVE; // use my IP
 
-    if ((rv = getaddrinfo(NULL, MYPORT, &hints, &servinfo)) != 0) {
+    if ((rv = getaddrinfo(NULL, port, &hints, &servinfo)) != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
         return 1;
     }
@@ -116,7 +121,7 @@ int main(void)
         printf("Server: recieved\n");
         printf("Server: packet is %d bytes long\n", numbytes);
 
-        char *messagep = message;
+        uint8_t *messagep = message;
         uint16_t tml, requestid;
         uint8_t operation;
         memcpy(&tml,messagep,sizeof(uint16_t)); 

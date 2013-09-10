@@ -16,16 +16,7 @@
 
 #include <arpa/inet.h>
 
-#define PORT "10014" // the port client will be connecting to 
-
-#define MAXDATASIZE 100 // max number of bytes we can get at once 
-
-/*struct packet{
-    uint16_t tml;
-    uint16_t requestid;
-    uint8_t operation;
-    //char *string;
-} __attribute__((packed));*/
+#define MAXDATASIZE 100
 
 struct __attribute__((packed)) packet{
     uint16_t tml;
@@ -47,7 +38,6 @@ void *get_in_addr(struct sockaddr *sa)
 int main(int argc, char *argv[])
 {
     int sockfd, numbytes;  
-    //char buf[MAXDATASIZE];
     struct addrinfo hints, *servinfo, *p;
     int rv;
     char s[INET6_ADDRSTRLEN];
@@ -90,17 +80,7 @@ int main(int argc, char *argv[])
 
 	//Construct packet
 	printf("Sending message: %s\n", argv[4]);
-    /*
-	struct packet *test = malloc(sizeof(struct packet));
-    test->requestid = 1;  //needs to be reset by the server
-	int oper = atoi(argv[3]);
-	test->operation = oper; //needs to be changed to cmd line arg input
-    test->tml = 5 + strlen(argv[4]);  //5 + message length
-	test->message = strdup(argv[4]); //Copy argv[2] into struct
-	
-	printf("(%d|%d|%d|%s)\n", test->tml, test->requestid, test->operation, test->message); //Print test packet
-    printf("Total packet size: %d\nLength of string: %d\n", sizeof(*test), strlen(test->message)); //Print size and length
-	*/
+
 	uint16_t requestid = 1;
 	
 	char *buf = malloc( 5 + strlen(argv[4]) ); 

@@ -1,18 +1,22 @@
+# group 4
+# ServerTCP.py
+# run with python ServerTCP.py [port]
+
 import socket, sys, struct
 
-port = int(sys.argv[1])
+port = int(sys.argv[1]) # set port
 
 print "Port #:", port
 
 BUFFER_SIZE = 20
  
-def disemvoweling(str):
+def disemvoweling(str): # disemvowel
 	for char in str:
 		if char in "aeiouAEIOU":
 			str = str.replace(char,'')
 	return str
 	
-def vlength(str):
+def vlength(str): # vowel count
 	count = 0
 	for char in str:
 		if char in "aeiouAEIOU":
@@ -20,33 +24,28 @@ def vlength(str):
 	return count
 	
 def modified_unpack(fmt, dat):
-    if fmt[-1] not in ('z', 's') or (fmt[-1] == 's' and fmt[-2].isdigit()):
-        return struct.unpack(fmt, dat)
     non_str_len = struct.calcsize(fmt[:-1])
     str_len = len(dat) - non_str_len
-    if fmt[-1] == 'z':
-        str_fmt = "{0}sx".format(str_len - 1)
-    else:
-        str_fmt = "{0}s".format(str_len)
+    str_fmt = "{0}s".format(str_len)
     new_fmt = fmt[:-1] + str_fmt
     return struct.unpack(new_fmt, dat)
 		
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind(('', port))
-s.listen(1)
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # set socket
+s.bind(('', port)) # bind on port
+s.listen(1) # listen
 
-conn, addr = s.accept()
-print 'Connection address:', addr
+# infinite loop
 while 1:
+	conn, addr = s.accept()
+	print 'Connection address:', addr
 	data = conn.recv(BUFFER_SIZE)
 	if not data: break
-	print "received data:", data
 	tup = modified_unpack("h h B s", data)
 	
-	tml = tup[0]
-	rid = tup[1]
-	operation = tup[2]
-	message = tup[3]
+	tml = tup[0] # extract tml
+	rid = tup[1] # extract rid
+	operation = tup[2] # extract operation
+	message = tup[3] # extract message
 	
 	print "Tml:", tml
 	print "RID:", rid
@@ -55,12 +54,15 @@ while 1:
 	
 	if operation == 85:
 		message = vlength(message)
+		tml = 6
 		out = struct.pack("h h h", tml, rid, message)
 		conn.send(out)
 		
 	if operation == 170:
 		message = disemvoweling(message)
+		tml = 4 + len(message)
 		out = struct.pack("h h", tml, rid) + message
 		conn.send(out)
+
 	
 conn.close()

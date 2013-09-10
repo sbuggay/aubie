@@ -2,10 +2,7 @@
 # CliendUDP.py
 # run with python CliendUDP.py [hostname] [port] [operation] [string]
 
-import sys
-import socket
-import struct
-import time
+import sys, socket, struct, time
 
 def modified_unpack(fmt, dat): #custom unpacking method dealing with ending strings
     non_str_len = struct.calcsize(fmt[:-1]) #get len of everything but the string

@@ -1,7 +1,3 @@
-/*
-** client.c -- a stream socket client demo
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -25,7 +21,6 @@ struct __attribute__((packed)) packet{
     char *message;
 };
 
-// get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
 {
     if (sa->sa_family == AF_INET) {
@@ -37,7 +32,7 @@ void *get_in_addr(struct sockaddr *sa)
 
 int main(int argc, char *argv[])
 {
-    int sockfd, numbytes;  
+    int sockfd, numbytes;
     struct addrinfo hints, *servinfo, *p;
     int rv;
     char s[INET6_ADDRSTRLEN];
@@ -78,39 +73,65 @@ int main(int argc, char *argv[])
         return 2;
     }
 
-	//Construct packet
-	printf("Sending message: %s\n", argv[4]);
+//Construct packet
+printf("Sending message: %s\n", argv[4]);
 
+	uint16_t tml;
 	uint16_t requestid = 1;
-	
-	char *buf = malloc( 5 + strlen(argv[4]) ); 
+	uint8_t operation = atoi(argv[3]);
+
+char *buf = malloc( 5 + strlen(argv[4]) );
     char *pos = buf;
     *(u_short*)pos = 5 + strlen(argv[4]);
     pos += sizeof(u_short);
     *(u_short*)pos = requestid;
     pos += sizeof(u_short);
-	*(u_int8_t*)pos = atoi(argv[3]);
+	*(u_int8_t*)pos = operation;
 	pos += sizeof(u_int8_t);
     strcpy( pos, argv[4] );
-	
+
     inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
             s, sizeof s);
     printf("client: connecting to %s\n", s);
-	
-    //printf("sending %d, %d", test->requestid, test->tml);
-    write(sockfd, buf, sizeof(buf));
-    freeaddrinfo(servinfo); // all done with this structure
 
-    if ((numbytes = read(sockfd, buf, MAXDATASIZE-1)) == -1) {
+    //printf("sending %d, %d", test->requestid, test->tml);
+    write(sockfd, buf, 5 + strlen(argv[4]));
+    freeaddrinfo(servinfo); // all done with this structure
+	
+	char *in = malloc(MAXDATASIZE);
+    if ((numbytes = read(sockfd, in, MAXDATASIZE-1)) == -1) {
         perror("recv");
         exit(1);
     }
-
-    buf[numbytes] = '\0';
-
-    printf("client: received '%s'\n",buf);
-
+	if (operation == 170) {
+		char *inp = in;
+		u_short tml, rid;
+		memcpy(&tml, inp, sizeof(u_short));
+		inp += sizeof(u_short);
+		memcpy(&rid, inp, sizeof(u_short));
+		inp += sizeof(u_short);
+		char *inbuf = malloc(tml - 4);
+		strcpy(inbuf, inp);
+		inbuf[tml - 4] = '\0';
+		printf("client: received tml is '%hu'\n",tml);
+		printf("client: received rid is '%hu'\n",rid);
+		printf("client: received disemvoweled message '%s'\n",inbuf);
+	} 
+	else {
+		char *inp = in;
+		u_short tml, rid, vowels;
+		memcpy(&tml, inp, sizeof(u_short));
+		inp += sizeof(u_short);
+		memcpy(&rid, inp, sizeof(u_short));
+		inp += sizeof(u_short);
+		memcpy(&vowels, inp, sizeof(u_short));
+		printf("client: received tml is '%hu'\n",tml);
+		printf("client: received rid is '%hu'\n",rid);
+		printf("client: received vowel length '%hu'\n",vowels);
+	}
+	
     close(sockfd);
 
     return 0;
 }
+

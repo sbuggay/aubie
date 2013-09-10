@@ -36,7 +36,7 @@ print "Time elapsed: ", elapsed
 
 if operation == 85:
 	print "Operation 85: Number of vowels"
-	print "Unpacked hex:", ":".join("{0:x}".format(ord(c)) for c in data)
+	print "Recieved data:", data
 	data = struct.unpack("h h h", data);
 	print "Recieved data:", data
 	print "tml:", data[0]
@@ -45,10 +45,7 @@ if operation == 85:
 else: 
 	print "Operation 107: Disemvowel"
 	print "Recieved data: ", data
-	print "Unpacked hex:", ":".join("{0:x}".format(ord(c)) for c in data)
-	size = struct.calcsize("hhs")
-	data = struct.unpack("hhs", data[:size]), data[size:]
-	print "Recieved data:", data
+	data = struct.unpack("h h 5s", data)
 	print "tml:", data[0]
 	print "requestid:", data[1]
 	print "string:", data[2]

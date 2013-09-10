@@ -174,11 +174,21 @@ int main(void)
             removeChar(buffer, 'U');
             printf("String out: %s\n", buffer);
 
-            char *packet_out = malloc(snprintf(NULL, 0, "%hu%hu%s", 4+strlen(buffer), requestid, buffer) + 1);
-            sprintf(packet_out, "%hu%hu%s", 4+strlen(buffer), requestid, buffer);
-            printf("%s\n", packet_out);
+            // char *packet_out = malloc(snprintf(NULL, 0, "%hu%hu%s", 4+strlen(buffer), requestid, buffer) + 1);
+            // sprintf(packet_out, "%hu%hu%s", 4+strlen(buffer), requestid, buffer);
+            // printf("%s %d\n", packet_out, 4 + strlen(buffer));
+            // allocate the buffer
+            char *buf = malloc( 4 + strlen(buffer) ); 
+            char *pos = buf;
+            *(u_short*)pos = 4 + strlen(buffer);
+            pos += sizeof(u_short);
+            *(u_short*)pos = requestid;
+            pos += sizeof(u_short);
+            strcpy( pos, buffer );
+
             printf("Server: Sending response to client\n");
-            sendto(sockfd, packet_out, sizeof(*packet_out), 0, (struct sockaddr *)&their_addr, client_length);
+            int bytes = sendto(sockfd, buf, 4 + strlen(buffer), 0, (struct sockaddr *)&their_addr, client_length);
+            printf("Sent %d bytes\n", bytes);
         }
         // No op
         else {

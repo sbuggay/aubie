@@ -83,24 +83,6 @@ int main(int argc, char *argv[])
     printf("(%d|%d|%d|%s)\n", test->tml, test->requestid, test->operation, test->message); //Print test packet
     printf("Total packet size: %d\nLength of string: %d\n", sizeof(*test), strlen(test->message)); //Print size and length
 
-    //printf("Message :%s %d\n", msgbuf, strlen(msgbuf));
-    //Send each segment one by one
-    // if ((numbytes = sendto(sockfd, &test.tml, sizeof(test.tml), 0, p->ai_addr, p->ai_addrlen)) == -1) {
-    //     perror("talker: sendto");
-    //     exit(1);
-    // }
-    // if ((numbytes = sendto(sockfd, &test.requestid, sizeof(test.requestid), 0, p->ai_addr, p->ai_addrlen)) == -1) {
-    //     perror("talker: sendto");
-    //     exit(1);
-    // }
-    // if ((numbytes = sendto(sockfd, &test.operation, sizeof(test.operation), 0, p->ai_addr, p->ai_addrlen)) == -1) {
-    //     perror("talker: sendto");
-    //     exit(1);
-    // }
-    // if ((numbytes = sendto(sockfd, test.message, strlen(test.message) + 1, 0, p->ai_addr, p->ai_addrlen)) == -1) {
-    //     perror("talker: sendto");
-    //     exit(1);
-    // }
 
     if ((numbytes = sendto(sockfd, test, sizeof(*test) + strlen(test->message), 0, p->ai_addr, p->ai_addrlen)) == -1) {
         perror("talker: sendto");

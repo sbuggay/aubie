@@ -2,7 +2,7 @@
 # ClientUDP.py
 # run with python ClientUDP.py [hostname] [port] [operation] [string]
 
-import sys, socket, struct, time
+import sys, socket, struct, time, random
 
 BUFFER_SIZE = 100 # set buffer size
 
@@ -18,7 +18,7 @@ port = int(sys.argv[2]) #set port
 operation = int(sys.argv[3]) #set operation
 message = sys.argv[4] #set message
  
-requestid = 1; #set the requestid to whatever
+requestid = random.randint(0, 65535); #set the requestid to whatever
 
 print "UDP target hostname:", hostname
 print "UDP target port:", port
@@ -30,8 +30,9 @@ print "Client: setting socket"
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) #set up socket
 
 start = time.clock()
-msglength = 5 + len(message); #length is 5 + the length of the string
-msgbuf = struct.pack("h h B", msglength, 1, operation) + message #pack the message buffer
+msglength = socket.htons(5 + len(message)); #length is 5 + the length of the string
+requestid = socket.htons(requestid);
+msgbuf = struct.pack("H H B", msglength, requestid, operation) + message #pack the message buffer
 
 print "Client: sending data"
 sock.sendto(msgbuf, (hostname, port)) #send the data
@@ -45,13 +46,13 @@ print "Time elapsed: ", elapsed
 
 if operation == 85: #if operation 55
 	print "Operation 85: Number of vowels"
-	data = struct.unpack("h h h", data)
-	print "tml:", data[0]
-	print "requestid:", data[1]
-	print "vowels:", data[2]
+	data = struct.unpack("H H H", data)
+	print "tml:", socket.ntohs(data[0])
+	print "requestid:", socket.ntohs(data[1])
+	print "vowels:", socket.ntohs(data[2])
 else: #else must be operation 170 (otherwise server would of thrown error)
 	print "Operation 170: Disemvowel"
-	data = modified_unpack("hhs", data)
-	print "tml:", data[0]
-	print "requestid:", data[1]
+	data = modified_unpack("HHs", data)
+	print "tml:", socket.ntohs(data[0])
+	print "requestid:", socket.htons(data[1])
 	print "string:", data[2]

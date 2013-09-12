@@ -74,22 +74,29 @@ int main(int argc, char *argv[])
 
     // setup variables
 	uint16_t tml;
-	uint16_t requestid = 1; // requestid can be whatever
+	uint16_t requestid = rand() % 65535; // requestid can be whatever
 	uint8_t operation = atoi(argv[3]); // set operation
 
     inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr), s, sizeof s);
     printf("client: connecting to %s\n", s);
 
+    // convert hose to network byte order
+    tml = htons(5 + strlen(argv[4]));
+    requestid = htons(requestid);
+    operation = htons(operation);
+
     //create packet
     uint8_t *buf = malloc(5 + strlen(argv[4])); // allocate space for packet
     uint8_t *pos = buf; //point pointer
-    *(uint16_t*)pos = 5 + strlen(argv[4]); //set first 2 bytes to total message length (5 + strlen(message))
+    memcpy(pos, , uint16_t); //set first 2 bytes to total message length (5 + strlen(message))
     pos += sizeof(uint16_t); // move pointer 2 bytes over
-    *(uint16_t*)pos = requestid; // set next 2 bytes to rid
+    memcpy(pos, htons(requestid)); // set next 2 bytes to rid
     pos += sizeof(uint16_t); // move over 2 bytes
     *(uint8_t*)pos = operation; // set next bte to operation
     pos += sizeof(u_int8_t); // move over 1 byte
     strcpy( pos, argv[4] ); // copy string into rest of packet
+
+    //Time is not very accurate in C :|...
 
     // send packet
     write(sockfd, buf, 5 + strlen(argv[4]));
@@ -112,6 +119,10 @@ int main(int argc, char *argv[])
 		char *inbuf = malloc(tml - 4);  //allocate space for string
 		strcpy(inbuf, inp); //copy rest of packet into string
 		inbuf[tml - 4] = '\0'; // set null terminator
+
+        tml = ntohs(tml); //convert network to host
+        rid = ntohs(rid);
+
         //print out some info
 		printf("client: received tml is '%hu'\n",tml);
 		printf("client: received rid is '%hu'\n",rid);
@@ -127,6 +138,11 @@ int main(int argc, char *argv[])
 		memcpy(&rid, inp, sizeof(uint16_t)); // copy next 2 bytes into rid
 		inp += sizeof(uint16_t); // move pointer 2 bytes over
 		memcpy(&vowels, inp, sizeof(uint16_t)); // copy last two bytes into vowels
+
+        tml = ntohs(tml); //convert network to host
+        rid = ntohs(rid);
+        vowels = ntohs(vowels);
+
 		printf("client: received tml is '%hu'\n",tml);
 		printf("client: received rid is '%hu'\n",rid);
 		printf("client: received vowel length '%hu'\n",vowels);

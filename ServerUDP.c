@@ -70,17 +70,20 @@ int main(int argc, char *argv[])
     char buf[MAXBUFLEN], s[INET6_ADDRSTRLEN];;
     socklen_t addr_len;
     
+    //set the hints
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC; // set to AF_INET to force IPv4
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_flags = AI_PASSIVE; // use my IP
 
+    //get address info
     if ((rv = getaddrinfo(NULL, port, &hints, &servinfo)) != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
         return 1;
     }
 
-    for(p = servinfo; p != NULL; p = p->ai_next) { // loop through all the results and bind to the first we can
+    //loop through all the results and bind to the first we can
+    for (p = servinfo; p != NULL; p = p->ai_next) { 
         if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
             perror("Server: socket");
             continue;
@@ -132,7 +135,10 @@ int main(int argc, char *argv[])
         int stringLength = tml - 5; //calculate length of string (tml - 5(2 + 2 + 1 for header))
         char *buffer = malloc(stringLength + 1); //allocate space including space for '\0'
         strcpy(buffer, messagep); // copy the rest of the messagep into buffer string
-        buffer[stringLength] = '\0'; //set '\0'
+
+        //convert network to host byte order
+        tml = ntohs(tml);
+        requestid = ntohs(requestid);
 
         // Print some info on the packet
         printf("(%d|%d|%d|%s)\n", tml, requestid, operation, buffer);
@@ -154,16 +160,16 @@ int main(int argc, char *argv[])
                 }
             } 
             uint16_t out[3];
-            out[0] = 6; //TML will always be 6 because message will always contain 3 shorts
-            out[1] = requestid; //send back requestid
-            out[2] = total; //set total
+            out[0] = htons(6); //TML will always be 6 because message will always contain 3 shorts
+            out[1] = htons(requestid); //send back requestid
+            out[2] = htons(total); //set total
             printf("Total vowels: %d\n", total);
             printf("Server: Sending response to client\n");
             sendto(sockfd, out, 6, 0, (struct sockaddr *)&their_addr, client_length); //sends the out array
         }
         // Disemvowel
         else if(operation == 170) {
-            printf("Operation 107: Disemvowel\n");
+            printf("Operation 170: Disemvowel\n");
             printf("String in: %s\n", buffer);
             removeChar(buffer, 'a'); //remove all vowels
             removeChar(buffer, 'e');
@@ -180,9 +186,9 @@ int main(int argc, char *argv[])
             //set up returning packet
             char *buf = malloc(4 + strlen(buffer)); //allocate space (4 + length of returning string)
             char *pos = buf; //set up pointer
-            *(u_short*)pos = 4 + strlen(buffer); //fill in tml
+            *(u_short*)pos = htons(4 + strlen(buffer)); //fill in tml
             pos += sizeof(u_short); //shift
-            *(u_short*)pos = requestid; //fill in requestid
+            *(u_short*)pos = htons(requestid); //fill in requestid
             pos += sizeof(u_short); //shift
             strcpy( pos, buffer ); //fill in string
             //packet now looks like (h,h,s)

@@ -40,10 +40,10 @@ while 1:
 	if not data: break
 	tup = modified_unpack("h h B s", data) # unpack data
 	
-	tml = tup[0] # extract tml
-	rid = tup[1] # extract rid
-	operation = tup[2] # extract operation
-	message = tup[3] # extract message
+	tml = socket.htons(tup[0]) # extract tml
+	rid = socket.htons(tup[1]) # extract rid
+	operation = socket.htons(tup[2]) # extract operation
+	message = socket.htons(tup[3]) # extract message
 	
 	# display some info about the packet
 	print "Tml:", tml
@@ -54,14 +54,23 @@ while 1:
 	# vowel length
 	if operation == 85:
 		message = vlength(message) # get vowel count
-		tml = 6 #set tml (will always be 6)
+
+		#convert host to network byte order
+		tml = socket.htons(6) #set tml (will always be 6)
+		rid = socket.htons(rid)
+		message = socket.htons(message)
+
 		out = struct.pack("h h h", tml, rid, message) # pack packet
 		conn.send(out) # send packet
 		
 	# disemvowel
 	if operation == 170:
 		message = disemvoweling(message) # get disemvoweled message
-		tml = 4 + len(message) # recalculate tml
+		
+
+		tml = sockter.htons(4 + len(message)) # recalculate tml
+		rid = socket.htons(rid)
+
 		out = struct.pack("h h", tml, rid) + message # pack packet
 		conn.send(out) # send packet
 

@@ -28,50 +28,70 @@ def modified_unpack(fmt, dat): # custom unpacking method dealing with ending str
     new_fmt = fmt[:-1] + str_fmt # add it to the old format
     return struct.unpack(new_fmt, dat) # unpack it with new format
 
+print "ServerTCP.py group 4"
+
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # set socket
 s.bind(('', port)) # bind on port
 s.listen(1) # listen
 
 # infinite loop
 while 1:
+	print "Server: waiting to recieve..."
 	conn, addr = s.accept() # accept connection
 	print 'Connection address:', addr
 	data = conn.recv(BUFFER_SIZE) # recieve data
 	if not data: break
-	tup = modified_unpack("h h B s", data) # unpack data
+
+	print "Server: recieved packet"
+
+	tup = modified_unpack("HHBs", data) # unpack data
 	
-	tml = socket.htons(tup[0]) # extract tml
-	rid = socket.htons(tup[1]) # extract rid
-	operation = socket.htons(tup[2]) # extract operation
-	message = socket.htons(tup[3]) # extract message
+	tml = socket.ntohs(tup[0]) # extract tml (this is a short so must use htons)
+	rid = socket.ntohs(tup[1]) # extract rid (this is also a short)
+	operation = tup[2] # extract operation
+	message = tup[3] # extract message
 	
 	# display some info about the packet
-	print "Tml:", tml
-	print "RID:", rid
-	print "Operation:", operation
-	print "Message:", message
-	
+	print "recieved tml:", tml
+	print "recieved requestid:", rid
+	print "recieved operation:", operation
+	print "recieved message:", message
+
 	# vowel length
 	if operation == 85:
 		message = vlength(message) # get vowel count
 
+		tml = 6
+
+		print "sending tml:", tml
+		print "sending requestid", rid
+		print "sending message:", message
+
 		#convert host to network byte order
-		tml = socket.htons(6) #set tml (will always be 6)
+		tml = socket.htons(tml) #set tml (will always be 6)
 		rid = socket.htons(rid)
 		message = socket.htons(message)
 
-		out = struct.pack("h h h", tml, rid, message) # pack packet
+		out = struct.pack("H H H", tml, rid, message) # pack packet
 		conn.send(out) # send packet
+		print "Server: sent packet"
 		
 	# disemvowel
 	if operation == 170:
 		message = disemvoweling(message) # get disemvoweled message
 		
+		tml = 4 + len(message)
 
-		tml = sockter.htons(4 + len(message)) # recalculate tml
+		print "sending tml:", tml
+		print "sending requestid", rid
+		print "sending message:", message
+
+		tml = socket.htons(tml) # recalculate tml
 		rid = socket.htons(rid)
 
-		out = struct.pack("h h", tml, rid) + message # pack packet
+		out = struct.pack("H H", tml, rid) + message # pack packet
 		conn.send(out) # send packet
+
+		print "Server: sent packet"
 
 conn.close() # close connection	

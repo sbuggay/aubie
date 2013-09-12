@@ -35,10 +35,15 @@ int main(int argc, char *argv[])
     int rv;
     char s[INET6_ADDRSTRLEN];
 
+    //seed rng
+    srand(time(NULL));
+
     if (argc != 5) { // check for correct args
         fprintf(stderr,"usage: client [hostname] [port] [operation] [message]\n");
         exit(1);
     }
+
+    printf("ClientUDP.c group 4\n");
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
@@ -53,53 +58,57 @@ int main(int argc, char *argv[])
     for(p = servinfo; p != NULL; p = p->ai_next) {
         if ((sockfd = socket(p->ai_family, p->ai_socktype,
                 p->ai_protocol)) == -1) {
-            perror("client: socket");
+            perror("Client: socket");
             continue;
         }
 
         if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
             close(sockfd);
-            perror("client: connect");
+            perror("Client: connect");
             continue;
         }
         break;
     }
 
     if (p == NULL) {
-        fprintf(stderr, "client: failed to connect\n");
+        fprintf(stderr, "Client: failed to connect\n");
         return 2;
     }
-
-    printf("Sending message: %s\n", argv[4]);
-
     // setup variables
-	uint16_t tml;
 	uint16_t requestid = rand() % 65535; // requestid can be whatever
 	uint8_t operation = atoi(argv[3]); // set operation
+    char *message = argv[4];
+    uint16_t tml = 5 + strlen(argv[4]);
 
     inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr), s, sizeof s);
-    printf("client: connecting to %s\n", s);
+    printf("Client: connecting to %s\n", s);
+
+    printf("sending tml %hu\n", tml);
+    printf("sending requestid: %hu\n", requestid);
+    printf("sending operation: %u\n", operation);
+    printf("sending message: %s\n", message);
 
     // convert hose to network byte order
-    tml = htons(5 + strlen(argv[4]));
+    tml = htons(tml);
     requestid = htons(requestid);
-    operation = htons(operation);
 
-    //create packet
-    uint8_t *buf = malloc(5 + strlen(argv[4])); // allocate space for packet
+    // create packet
+    uint8_t *buf = malloc(tml); // allocate space for packet
     uint8_t *pos = buf; //point pointer
-    memcpy(pos, , uint16_t); //set first 2 bytes to total message length (5 + strlen(message))
+    *(uint16_t*)pos = tml; //set first 2 bytes to total message length (5 + strlen(message))
     pos += sizeof(uint16_t); // move pointer 2 bytes over
-    memcpy(pos, htons(requestid)); // set next 2 bytes to rid
+    *(uint16_t*)pos = requestid; // set next 2 bytes to rid
     pos += sizeof(uint16_t); // move over 2 bytes
     *(uint8_t*)pos = operation; // set next bte to operation
-    pos += sizeof(u_int8_t); // move over 1 byte
-    strcpy( pos, argv[4] ); // copy string into rest of packet
+    pos += sizeof(uint8_t); // move over 1 byte
+    strcpy(pos, message); // copy string into rest of packet
 
-    //Time is not very accurate in C :|...
+    // Time is not very accurate in C :|...
 
     // send packet
     write(sockfd, buf, 5 + strlen(argv[4]));
+
+    printf("Client: sent packet\n");
 	
 	uint8_t *in = malloc(MAXDATASIZE);
     if ((numbytes = read(sockfd, in, MAXDATASIZE-1)) == -1) {
@@ -107,8 +116,13 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+    printf("Client: received packet\n");
+
+    // print time elapsed
+
     // disemvowel operation
 	if (operation == 170) {
+        printf("Operation 170: Disemvowel\n");
 		uint8_t *inp = in; //pointer to packet
 		uint16_t tml, rid; // set up variables
         //unpack (h,h,s) packet
@@ -116,24 +130,24 @@ int main(int argc, char *argv[])
 		inp += sizeof(uint16_t); //move pointer 2 bytes over
 		memcpy(&rid, inp, sizeof(uint16_t)); //copy next two bytes into rid
 		inp += sizeof(uint16_t); //move pointer 2 bytes over 
-		char *inbuf = malloc(tml - 4);  //allocate space for string
-		strcpy(inbuf, inp); //copy rest of packet into string
-		inbuf[tml - 4] = '\0'; // set null terminator
-
         tml = ntohs(tml); //convert network to host
         rid = ntohs(rid);
+		char *inbuf = malloc(tml - 4);  //allocate space for string
+		strcpy(inbuf, inp); //copy rest of packet into string
+        inbuf[tml - 4] = '\0';
 
         //print out some info
-		printf("client: received tml is '%hu'\n",tml);
-		printf("client: received rid is '%hu'\n",rid);
-		printf("client: received disemvoweled message '%s'\n",inbuf);
+		printf("received tml: %hu\n",tml);
+		printf("received requestid: %hu\n",rid);
+		printf("received message: %s\n",inbuf);
 	} 
     // vowel count operation
-	else { 
+	if (operation == 85) {
+        printf("Operation 85: Number of vowels\n"); 
 		uint8_t *inp = in; // pointer to packet
 		uint16_t tml, rid, vowels; //set up variables
         // unpack (h,h,h) uint16_t
-		memcpy(&tml, inp, sizeof(u_short)); // copy first 2 bytes into tml
+		memcpy(&tml, inp, sizeof(uint16_t)); // copy first 2 bytes into tml
 		inp += sizeof(uint16_t); // move pointer 2 bytes over
 		memcpy(&rid, inp, sizeof(uint16_t)); // copy next 2 bytes into rid
 		inp += sizeof(uint16_t); // move pointer 2 bytes over
@@ -143,9 +157,9 @@ int main(int argc, char *argv[])
         rid = ntohs(rid);
         vowels = ntohs(vowels);
 
-		printf("client: received tml is '%hu'\n",tml);
-		printf("client: received rid is '%hu'\n",rid);
-		printf("client: received vowel length '%hu'\n",vowels);
+		printf("received tml: %hu\n",tml);
+		printf("received requestid: %hu\n",rid);
+		printf("received vowel length: %hu\n",vowels);
 	}
 	
     freeaddrinfo(servinfo); // all done with this structure

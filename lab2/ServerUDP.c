@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+
 #define MAXBUFLEN 1000
 
 // get sockaddr, IPv4 or IPv6:
@@ -25,6 +26,7 @@ void *get_in_addr(struct sockaddr *sa);
 // function for calculating checksum
 uint8_t calc_checksum(uint8_t *p, int size);
 
+//function for getting the ip address from the hostname
 uint32_t hostname_to_ip(char * hostname , char* ip);
 
 int main(int argc, char *argv[])
@@ -42,8 +44,8 @@ int main(int argc, char *argv[])
     int sockfd, rv, numbytes;
     struct addrinfo hints, *servinfo, *p;
     struct sockaddr_storage their_addr;
-    char buf[MAXBUFLEN], s[INET6_ADDRSTRLEN];;
-    socklen_t addr_len;
+    //char buf[MAXBUFLEN], s[INET6_ADDRSTRLEN];;
+    // socklen_t addr_len;
     
     //set the hints
     memset(&hints, 0, sizeof hints);
@@ -112,6 +114,7 @@ int main(int argc, char *argv[])
         //convert network to host byte order
         tml = ntohs(tml);
 
+
         //get string of hostnames out
         int stringLength = tml - 5; //calculate length of string (tml - 5(2 + 2 + 1 for header))
         char *buffer = malloc(stringLength + 1); //allocate space including space for '\0'
@@ -123,6 +126,7 @@ int main(int argc, char *argv[])
         printf("[DEBUG] packet:[%d|%d|%d|%d|%s]\n", tml, checksum, gid, requestid, buffer);
         printf("[DEBUG] recieved tml: %d\n", tml);
         printf("[DEBUG] recieved checksum: %d\n", checksum);
+        printf("[DEBUG] should have checksum: %d\n", calc_checksum(message, tml));
         printf("[DEBUG] recieved gid: %d\n", gid);
         printf("[DEBUG] recieved reqestid: %d\n", requestid);
         printf("[DEBUG] recieved hostname_list: %s\n", buffer);
@@ -155,6 +159,7 @@ int main(int argc, char *argv[])
             pos += sizeof(uint8_t); //shift
             *(uint16_t*)pos = htons(0x0000); //fill in requested two bytes
             
+
             //print out packet
             printf("[DEBUG] packet:[%d|%d|%d|%x]\n", checksum, gid, requestid, 0x0000);
 
@@ -181,7 +186,7 @@ int main(int argc, char *argv[])
             *(uint16_t*)pos = htons(0x0000); //fill in requested two bytes
             
             //print out message
-            printf("[DEBUG] packet:[%d|%d|%d|%X]\n", checksum, 127, 127, 0x00, 0x00);
+            // printf("[DEBUG] packet:[%d|%d|%d|%X]\n", checksum, 127, 127, 0x00, 0x00);
 
             //send error message
             sendto(sockfd, buf, tml, 0, (struct sockaddr *)&their_addr, client_length); //sends the out array
@@ -247,14 +252,16 @@ void *get_in_addr(struct sockaddr *sa) {
 }
 
 uint8_t calc_checksum(uint8_t *p, int size) {
-    return 0;
-    int i = 0;
-    uint8_t buffer = 0;
-    for (i; i < size; i++) {
+    int i;
+    uint16_t buffer = 0;
+    for (i = 0; i < size; i++) {
         buffer += p[i];
-        printf("%u\n", buffer);
+        uint8_t carry = buffer >> 8;
+        buffer += carry;
+        buffer = buffer & 0xff;
+        printf("%u : %u\n", p[i], buffer);
     }
-    return buffer;
+    return (uint8_t) ~buffer; // neat trick, (uint8_t) ~0 is max uint8_t, then subtract buffer
 }
 
 uint32_t hostname_to_ip(char *hostname, char *ip) {

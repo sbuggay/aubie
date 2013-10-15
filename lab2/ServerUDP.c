@@ -126,32 +126,22 @@ int main(int argc, char *argv[])
         printf("[DEBUG] packet:[%d|%d|%d|%d|%s]\n", tml, checksum, gid, requestid, buffer);
         printf("[DEBUG] recieved tml: %d\n", tml);
         printf("[DEBUG] recieved checksum: %d\n", checksum);
-        printf("[DEBUG] should have checksum: %d\n", calc_checksum(message, tml));
         printf("[DEBUG] recieved gid: %d\n", gid);
         printf("[DEBUG] recieved reqestid: %d\n", requestid);
         printf("[DEBUG] recieved hostname_list: %s\n", buffer);
 #endif
 
-        uint16_t total_hostnames = 0;
-        uint32_t ip_list[100];
-        char *pch = strtok (buffer,"~");
-        while (pch != NULL) {
-            char ip[100];
-            uint32_t iip = hostname_to_ip(pch, ip);
-            printf("[DEBUG] %s resolved to %s (%u)\n", pch, ip, iip);
-            ip_list[total_hostnames] = iip;
-            pch = strtok(NULL, "~");
-            total_hostnames++;
-        }
+
 
         //checksum error handling
-        if (checksum != calc_checksum(message, tml)) {
+        if (calc_checksum(message, tml) != 0) { // will turn out to be 0 because calc_checksum returns the ~ inverse of it and if the checksum comes out to be FF it will be 0
+
             printf("[SERVER] Checksum invalid, sending error message to client\n");
             
             //set up packet to send
             char *buf = malloc(5); //allocate space (4 + length of returning string)
             char *pos = buf; //set up pointer
-            *(uint8_t*)pos = checksum; //fill in checksum
+            *(uint8_t*)pos = 0; //fill in checksum
             pos += sizeof(uint8_t); //shift
             *(uint8_t*)pos = gid; //fill in gid
             pos += sizeof(uint8_t); //shift
@@ -164,7 +154,7 @@ int main(int argc, char *argv[])
             printf("[DEBUG] packet:[%d|%d|%d|%x]\n", checksum, gid, requestid, 0x0000);
 
             //send error message
-            sendto(sockfd, buf, tml, 0, (struct sockaddr *)&their_addr, client_length); //sends the out array
+            sendto(sockfd, buf, 5, 0, (struct sockaddr *)&their_addr, client_length); //sends the out array
             printf("[SERVER] sent checksum error message\n");
 
             //free the message buffer
@@ -184,12 +174,13 @@ int main(int argc, char *argv[])
             *(uint8_t*)pos = 127; //fill in requestid
             pos += sizeof(uint8_t); //shift
             *(uint16_t*)pos = htons(0x0000); //fill in requested two bytes
-            
-            //print out message
-            // printf("[DEBUG] packet:[%d|%d|%d|%X]\n", checksum, 127, 127, 0x00, 0x00);
+            checksum = calc_checksum(buf, tml);
+            pos = buf;
+            pos += sizeof(uint16_t);
+            *(uint8_t*)pos = checksum;
 
             //send error message
-            sendto(sockfd, buf, tml, 0, (struct sockaddr *)&their_addr, client_length); //sends the out array
+            sendto(sockfd, buf, 5, 0, (struct sockaddr *)&their_addr, client_length); //sends the out array
             printf("[SERVER] sent length mismatch error message\n");
 
             //free the message buffer
@@ -198,28 +189,26 @@ int main(int argc, char *argv[])
         //no errors, complete request
         else {
             printf("[SERVER] Checksum valid\n");
-
-            uint16_t tml = 5 + (4 * total_hostnames);
-
-#ifdef debug
-            //print out packet
-            printf("[DEBUG] packet:[0x%X|0x%X|0x%X|0x%X", tml, checksum, gid, requestid);
-            int i;
-            for(i = 0; i < total_hostnames; i++) {
-                printf("|0x%X", ip_list[i]);
+            uint16_t total_hostnames = 0;
+            uint32_t ip_list[100];
+            char *pch = strtok (buffer,"~");
+            while (pch != NULL) {
+                char ip[100];
+                uint32_t iip = hostname_to_ip(pch, ip);
+                printf("[DEBUG] %s resolved to %s (%u)\n", pch, ip, iip);
+                ip_list[total_hostnames] = iip;
+                pch = strtok(NULL, "~");
+                total_hostnames++;
             }
-            printf("]\n");
-            printf("[DEBUG] sending tml: %d\n", tml);
-            printf("[DEBUG] sending checksum: %d\n", checksum);
-            printf("[DEBUG] sending gid: %d\n", gid);
-            printf("[DEBUG] sending requestid: %d\n", requestid);
-#endif
+            uint16_t tml = 5 + (4 * total_hostnames);
+            
+            int i;
 
             char *buf = malloc(tml); //allocate space (4 + length of returning string)
             char *pos = buf; //set up pointer
             *(uint16_t*)pos = htons(tml); //fill in tml
             pos += sizeof(uint16_t); //shift
-            *(uint8_t*)pos = checksum; //fill in checksum
+            *(uint8_t*)pos = 0; //fill in checksum
             pos += sizeof(uint8_t); //shift
             *(uint8_t*)pos = gid; //fill in gid
             pos += sizeof(uint8_t); //shift
@@ -229,6 +218,26 @@ int main(int argc, char *argv[])
                 *(uint32_t*)pos = htonl(ip_list[i]);
                 pos += sizeof(uint32_t);
             }
+            checksum = calc_checksum(buf, tml);
+            pos = buf;
+            pos += sizeof(uint16_t);
+            *(uint8_t*)pos = checksum;
+
+#ifdef debug
+            //print out packet
+            
+            printf("[DEBUG] packet:[0x%X|0x%X|0x%X|0x%X", tml, checksum, gid, requestid);
+
+                for(i = 0; i < total_hostnames; i++) {
+                    printf("|0x%X", ip_list[i]);
+                }
+                printf("]\n");
+                printf("[DEBUG] sending tml: %d\n", tml);
+                printf("[DEBUG] sending checksum: %d\n", checksum);
+                printf("[DEBUG] sending gid: %d\n", gid);
+                printf("[DEBUG] sending requestid: %d\n", requestid);
+#endif
+
 
             //send request message
             int bytes = sendto(sockfd, buf, tml, 0, (struct sockaddr *)&their_addr, client_length); //sends the out array
@@ -252,30 +261,32 @@ void *get_in_addr(struct sockaddr *sa) {
 }
 
 uint8_t calc_checksum(uint8_t *p, int size) {
+    //return 0;
     int i;
     uint16_t buffer = 0;
     for (i = 0; i < size; i++) {
-        buffer += p[i];
-        uint8_t carry = buffer >> 8;
-        buffer += carry;
-        buffer = buffer & 0xff;
-        printf("%u : %u\n", p[i], buffer);
+        buffer += p[i]; // add the byte to the buffer
+        uint8_t carry = buffer >> 8; // get the carry
+        buffer += carry; // add back the carry
+        buffer = buffer & 0xff; // get only the last 8 bits
+        //printf("%u : %u\n", p[i], buffer);
     }
-    return (uint8_t) ~buffer; // neat trick, (uint8_t) ~0 is max uint8_t, then subtract buffer
+    return (uint8_t) ~buffer; // return the 1's compliment
+    // This means that when the entire checksum is calculated, if it a correct one, it should return 0. (~0xFF = 0x00)
 }
 
 uint32_t hostname_to_ip(char *hostname, char *ip) {
     struct hostent *he;
     struct in_addr **addr_list;
     int i;
-         
+
     if ((he = gethostbyname(hostname)) == NULL) {
         herror("gethostbyname");
         return 1;
     }
- 
+
     addr_list = (struct in_addr **) he->h_addr_list;
-     
+
     for (i = 0; addr_list[i] != NULL; i++) {
         strcpy(ip, inet_ntoa(*addr_list[i]) );
         return addr_list[i]->s_addr;

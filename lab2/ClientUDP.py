@@ -2,10 +2,19 @@
 # ClientUDP.py
 # run with python ClientUDP.py [hostname] [port] [operation] [string]
 
-import sys, socket, struct, time, random
+import sys, socket, struct, time, random, ctypes
 
 BUFFER_SIZE = 1000 # set buffer size
 debug = 1 # set to print out debug info
+
+def checksum(msg):
+    s = 0
+    for i in range(0, len(msg)):
+        s = s + msg[i]
+        carry = s >> 8
+        s = s + carry
+        s = s & 0xff
+    return ctypes.c_uint8(~s).value
 
 if len(sys.argv) < 6:
 	print "usage: [hostname] [port] [operation] [hostnames...]"
@@ -42,27 +51,57 @@ if debug == 1:
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) #set up socket
 
 tml = socket.htons(tml) # set network byte order for TML
+
 message = struct.pack("HBBB", tml, 0, gid, requestid) + hostname_string
+check_len = len(message)
+check_data = struct.unpack("{0}B".format(check_len), message)
+print check_data
+print checksum(check_data)
+message = struct.pack("HBBB", tml, checksum(check_data), gid, requestid) + hostname_string
 
-print message[0], message[1];
 
-start = time.clock() # start timing clock
-sock.sendto(message, (hostname, port)) # send the data
-print "[CLIENT] sent packet"
+# this needs to loop 3 times
 
-data, addr = sock.recvfrom(BUFFER_SIZE) # recieve data from server
-print "[CLIENT] recieved packet"
+iteration = 0
 
-# print time elapsed
-elapsed = (time.clock() - start) # get elapsed time
-print "[CLIENT] Time elapsed: ", elapsed
+while iteration < 7 : 
 
-# print ":".join("{0:x}".format(ord(c)) for c in data)
+	start = time.clock() # start timing clock
+	sock.sendto(message, (hostname, port)) # send the data
+	print "[CLIENT] sent packet"
 
-# unpack data
+	data, addr = sock.recvfrom(BUFFER_SIZE) # recieve data from server
+	print "[CLIENT] recieved packet"
+
+	# print time elapsed
+	elapsed = (time.clock() - start) # get elapsed time
+	print "[CLIENT] Time elapsed: ", elapsed
+
+	print ":".join("{0:x}".format(ord(c)) for c in data)
+
+	# unpack data
+
+	packet_length = len(data)
+
+	check_len = len(data)
+	check_data = struct.unpack("{0}B".format(check_len), data)
+	print check_data
+	if checksum(check_data) == 0:
+		print "Checksum valid!"
+		break;
+	else: 
+		print "Checksum invalid!"
+
+	if packet_length <= 5 :
+		print "Length wrong"
+
+	if packet_length > 5 :
+		break;
+
 
 iplen = (len(data) - struct.calcsize("HBBB")) / 4
 data = struct.unpack("=HBBB{0}I".format(iplen), data)
+
 
 # print debug info
 if debug == 1:

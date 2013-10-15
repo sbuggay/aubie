@@ -12,3 +12,5 @@ ClientUDP.dSYM/Contents/Info.plist
 ClientTCP
 
 lab2/<canvas id="myCanvas"><:canvas>
+
+lab2/test.c
